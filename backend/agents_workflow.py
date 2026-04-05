@@ -17,7 +17,8 @@ class AgentState(TypedDict):
 
 class DastoorAgent:
     def __init__(self, vector_db):
-        self.llm = OllamaLLM(model="llama3", temperature=0)
+        self.llm = OllamaLLM(model="gemma4:26b", 
+        base_url="http://203.124.40.57:11434", temperature=0)
         self.vector_db = vector_db
 
     def classify_node(self, state: AgentState):

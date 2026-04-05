@@ -7,7 +7,7 @@ from langchain_classic.chains import RetrievalQA
 
 # 1. Load the exact same embedding model
 embedding_model = HuggingFaceEmbeddings(
-    model_name="sentence-transformers/all-MiniLM-L6-v2"
+    model_name="sentence-transformers/all-mpnet-base-v2"
 )
 
 # 2. Fix the DB Path

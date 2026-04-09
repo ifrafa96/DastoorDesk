@@ -4,15 +4,16 @@ from langchain_ollama import OllamaLLM
 llm = OllamaLLM(
     model="gemma4:26b",
     base_url="http://203.124.40.57:11434",
-    temperature=0
+    temperature=0,
+    timeout=120  # prevent indefinite hang on slow remote server
 )
 
 def generate_english_response(query, context, category, evidence):
     legal_focus = ""
     if "cybercrime" in category.lower():
-        legal_focus = "Focus on PECA 2016: Sections 13, 14, and 16."
+        legal_focus = "Focus on PECA 2016 and related cybercrime legislation."
     elif "property" in category.lower():
-        legal_focus = "Focus on Transfer of Property Act 1882, Illegal Dispossession Act 2005."
+        legal_focus = "Focus on Transfer of Property Act 1882 and Illegal Dispossession Act 2005."
     elif "family" in category.lower():
         legal_focus = "Focus on Muslim Family Laws Ordinance 1961 and Family Courts Act 1964."
     elif "labour" in category.lower():
@@ -20,7 +21,7 @@ def generate_english_response(query, context, category, evidence):
     elif "criminal" in category.lower():
         legal_focus = "Focus on Pakistan Penal Code 1860 and Code of Criminal Procedure 1898."
     elif "constitutional" in category.lower():
-        legal_focus = "Focus on Constitution of Pakistan 1973, Articles 8-28 (Fundamental Rights)."
+        legal_focus = "Focus on Constitution of Pakistan 1973, Fundamental Rights chapters."
 
     evidence_text = "\n".join(f"- {item}" for item in evidence)
 
@@ -41,10 +42,27 @@ USER QUERY: {query}
 ━━━ SECTION RULES ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 ###  Legal Framework
-[RULE: Use ONLY the above context. Cite only Act names and Section numbers that APPEAR in the context. If no relevant law is found, write: "No matching Pakistani law found in the current database for this query."]
-* **Statute:** [Pakistani Act name from context]
-* **Sections:** [Section numbers verbatim from context]
-* **Summary:** [Plain-English explanation of what Pakistani law says]
+[RULES:
+- Scan EVERY chunk in the retrieved context above from start to finish.
+- Extract EVERY section number, article number, and clause that appears — do not skip any.
+- List ALL relevant statutes. For each statute, list ALL section numbers found, individually.
+- Do NOT summarize section numbers together — list each one separately with its specific meaning.
+- Section numbers must be copied VERBATIM from the context — never invent or guess.
+- If no relevant law is found, write: "No matching Pakistani law found in the current database for this query."
+]
+
+**[Statute 1 name — from context]**
+* **Section [X]:** [What this specific section says / its relevance to the query]
+* **Section [Y]:** [What this specific section says / its relevance to the query]
+* **Section [Z]:** [What this specific section says / its relevance to the query]
+(list every section found for this statute)
+
+**[Statute 2 name — from context, if present]**
+* **Section [A]:** [What this specific section says]
+* **Section [B]:** [What this specific section says]
+(list every section found for this statute)
+
+**[Continue for every statute found in the context]**
 
 ###  Action Plan
 [RULE: Provide 3 concrete steps using ONLY Pakistani institutions and procedures. Allowed: FIA, NADRA, Pakistan Telecommunication Authority (PTA), Civil Courts, Session Courts, High Courts, Supreme Court, Consumer Courts, National Database, PEMRA, SECP, SBP, etc. Do NOT mention foreign agencies, apps, or generic advice like "contact your lawyer".]

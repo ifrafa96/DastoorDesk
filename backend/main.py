@@ -12,7 +12,6 @@ from langchain_chroma import Chroma
 from logger_config import logger
 from tools_library import LegalTools
 from graph_engine import create_dastoor_graph
-from translator_service import translator
 from voice_service import voice_service
 
 # 1. Initialize FastAPI with metadata
@@ -67,8 +66,9 @@ async def home():
 async def ask_legal_bot(query: UserQuery):
     """Handles text-based queries."""
     try:
-        lang = translator.detect_language(query.question)
-        inputs = {"query": query.question, "language": lang, "category": query.department.value}
+        # Language detection happens inside classifier_node (fast Unicode check).
+        # No LLM pre-call needed here.
+        inputs = {"query": query.question, "category": query.department.value}
         result = dastoor_brain.invoke(inputs)
         return {
             "answer": result["response"],
@@ -100,10 +100,9 @@ async def ask_legal_bot_voice(department: LegalSector, audio: UploadFile = File(
             return {"answer": "Could not understand audio.", "status": "error"}
 
         # 4. Route to Agentic Brain
-        lang = translator.detect_language(transcribed_text)
+        # Language detection happens inside classifier_node (fast Unicode check).
         inputs = {
-            "query": transcribed_text, 
-            "language": lang, 
+            "query": transcribed_text,
             "category": department.value
         }
         result = dastoor_brain.invoke(inputs)

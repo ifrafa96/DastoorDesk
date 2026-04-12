@@ -12,7 +12,6 @@ from langchain_chroma import Chroma
 from logger_config import logger
 from tools_library import LegalTools
 from graph_engine import create_dastoor_graph
-from voice_service import voice_service
 
 # 1. Initialize FastAPI with metadata
 app = FastAPI(
@@ -79,46 +78,6 @@ async def ask_legal_bot(query: UserQuery):
     except Exception as e:
         logger.error(f"[SYSTEM ERROR] {str(e)}")
         return {"answer": "Error processing text request.", "status": "error"}
-
-@app.post("/ask-voice", tags=["Core Engine"])
-async def ask_legal_bot_voice(department: LegalSector, audio: UploadFile = File(...)):
-    """Receives audio, transcribes it, and runs the Legal Brain."""
-    temp_path = f"temp_{audio.filename}"
-    try:
-        # 1. Save the incoming audio temporarily
-        with open(temp_path, "wb") as buffer:
-            shutil.copyfileobj(audio.file, buffer)
-        
-        # 2. Convert Audio to Text (Whisper)
-        transcribed_text = voice_service.transcribe_audio(temp_path)
-        
-        # 3. Clean up the temp file
-        if os.path.exists(temp_path):
-            os.remove(temp_path)
-            
-        if not transcribed_text:
-            return {"answer": "Could not understand audio.", "status": "error"}
-
-        # 4. Route to Agentic Brain
-        # Language detection happens inside classifier_node (fast Unicode check).
-        inputs = {
-            "query": transcribed_text,
-            "category": department.value
-        }
-        result = dastoor_brain.invoke(inputs)
-        
-        return {
-            "transcribed_query": transcribed_text,
-            "answer": result["response"],
-            "evidence_list": result["evidence"],
-            "status": "success"
-        }
-    except Exception as e:
-        logger.error(f"[SYSTEM ERROR] {str(e)}")
-        # Clean up if error happens during processing
-        if os.path.exists(temp_path):
-            os.remove(temp_path)
-        return {"answer": "Error processing voice request.", "status": "error"}
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)

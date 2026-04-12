@@ -26,7 +26,13 @@ class AgentState(TypedDict):
 
 def create_dastoor_graph(vector_db, legal_tools):
     # timeout=120 ensures the LLM never hangs indefinitely
-    llm = OllamaLLM(model=LLM_MODEL, base_url=REMOTE_LLM_BASE, temperature=0, timeout=120)
+    llm = OllamaLLM(
+        model=LLM_MODEL,
+        base_url=REMOTE_LLM_BASE,
+        temperature=0,
+        timeout=120,
+        client_kwargs={'timeout': 120.0}
+    )
 
     # ── NODE 1: Language Classifier + Query Pre-Translator ──────────────────
     def classifier_node(state: AgentState):
@@ -119,9 +125,9 @@ def create_dastoor_graph(vector_db, legal_tools):
             logger.warning("[NODE] Retriever: All scores below threshold — using top-5 fallback.")
             filtered = scored_results[:5]
 
-        # Sort by score descending, keep top-10 for richer section coverage
+        # Sort by score descending, keep top-15 for richer section coverage
         filtered.sort(key=lambda x: x[1], reverse=True)
-        top_docs = filtered[:10]              # increased from 5 → 10
+        top_docs = filtered[:15]              # increased from 10 → 15
 
         # Build rich context with source + score info for the LLM
         context_parts = []
@@ -195,14 +201,8 @@ def create_dastoor_graph(vector_db, legal_tools):
 
     workflow.set_entry_point("classifier")
 
-    # English → retriever directly (1 LLM call total)
-    # Urdu   → rewriter → retriever (2 LLM calls total)
-    workflow.add_conditional_edges(
-        "classifier",
-        route_after_classifier,
-        {"query_rewriter": "query_rewriter", "retriever": "retriever"}
-    )
-    workflow.add_edge("query_rewriter", "retriever")
+    # English & Urdu → retriever directly (No rewriter step to save time)
+    workflow.add_edge("classifier", "retriever")
 
     # English → reasoner directly; Urdu → translator → reasoner
     workflow.add_conditional_edges(

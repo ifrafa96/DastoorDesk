@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
 import './globals.css'
 import ClientWrapper from "@/components/ClientWrapper"
+import { ThemeProvider } from "@/components/theme-provider"
 
 const _geist = Geist({ subsets: ["latin"] });
 const _geistMono = Geist_Mono({ subsets: ["latin"] });
@@ -36,13 +37,20 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <body className={`${geistSans.variable} ${geistMono.variable} font-sans antialiased`}>
-        {/* The ClientWrapper handles the LogoIntro animation and wrapping */}
-        <ClientWrapper>
-          {children}
-        </ClientWrapper>
-        <Analytics />
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="dark"
+          enableSystem
+          disableTransitionOnChange
+        >
+          {/* The ClientWrapper handles the LogoIntro animation and wrapping */}
+          <ClientWrapper>
+            {children}
+          </ClientWrapper>
+          <Analytics />
+        </ThemeProvider>
       </body>
     </html>
   )

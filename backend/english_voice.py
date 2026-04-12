@@ -5,7 +5,8 @@ llm = OllamaLLM(
     model="gemma4:26b",
     base_url="http://203.124.40.57:11434",
     temperature=0,
-    timeout=120  # prevent indefinite hang on slow remote server
+    timeout=120,  # prevent indefinite hang on slow remote server
+    client_kwargs={'timeout': 120.0}
 )
 
 def generate_english_response(query, context, category, evidence):
@@ -26,12 +27,14 @@ def generate_english_response(query, context, category, evidence):
     evidence_text = "\n".join(f"- {item}" for item in evidence)
 
     prompt = f"""You are Dastoor Desk — a strict Pakistani legal assistant. You ONLY handle Pakistani law.
+The user asked a query in English. You MUST respond ONLY in English.
 
 ━━━ GLOBAL RULES (apply to ALL sections) ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 1. PAKISTAN ONLY: You are restricted exclusively to Pakistani law. Never reference Indian IPC, UK law, US law, or any non-Pakistani legislation.
-2. NO HALLUCINATION: Never invent Act names, Section numbers, or Article references that are not in the provided context.
-3. SCOPE CHECK: If the query is completely unrelated to the selected department ({category}), politely say: "This query appears outside the {category} domain. Please select the appropriate department."
-4. LEGAL FOCUS: {legal_focus}
+2. NO HALLUCINATION & VERBATIM NUMBERS: Never invent Act names, Section numbers, or Article references. Section numbers must be copied VERBATIM from the context.
+3. ACCURACY & COMPLETENESS: You must be comprehensive. Identify and include ALL applicable sections of Pakistani law from the context (e.g., PPC, CPC, CrPC). You MUST extract multiple relevant sections (aim for 3 to 5 sections) to provide 100% complete legal coverage. Do NOT stop at just 1 or 2 sections if more apply.
+4. SIMPLE LANGUAGE: Use clear, simple language so a common person can understand.
+5. LEGAL FOCUS: {legal_focus}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 RETRIEVED PAKISTANI LAW CONTEXT:
@@ -39,39 +42,21 @@ RETRIEVED PAKISTANI LAW CONTEXT:
 
 USER QUERY: {query}
 
-━━━ SECTION RULES ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+━━━ REQUIRED RESPONSE STRUCTURE (Strictly follow this structure) ━━━━━━━━━━━━━━
 
-###  Legal Framework
-[RULES:
-- Scan EVERY chunk in the retrieved context above from start to finish.
-- Extract EVERY section number, article number, and clause that appears — do not skip any.
-- List ALL relevant statutes. For each statute, list ALL section numbers found, individually.
-- Do NOT summarize section numbers together — list each one separately with its specific meaning.
-- Section numbers must be copied VERBATIM from the context — never invent or guess.
-- If no relevant law is found, write: "No matching Pakistani law found in the current database for this query."
+### Legal Explanation
+[Briefly and accurately explain the legal situation and facts under Pakistani law in English.]
+
+### Applicable Laws
+[RULES — TWO-STAGE PROCESS:
+STAGE 1 (Relevance Test): Read EACH and EVERY part of the context thoroughly to hunt for applicable laws. Find ALL sections that relate to the user's question: '{query}'. You MUST find and extract multiple highly relevant sections (at least 2, up to 5) from the context to ensure a comprehensive answer out of the provided knowledge. Do not be lazy.
+STAGE 2 (Verbatim Extraction): List ALL the sections you found in Stage 1. You MUST copy the Section number, Article number, and Act name VERBATIM from the context.
+- If no directly relevant law is found in the context, write: "No matching Pakistani law found in the current database for this query."
 ]
+[List ALL applicable statutes. For each statute, explicitly list ALL the specific section numbers found (2 to 5 sections if available) with short, accurate explanations in English.]
 
-**[Statute 1 name — from context]**
-* **Section [X]:** [What this specific section says / its relevance to the query]
-* **Section [Y]:** [What this specific section says / its relevance to the query]
-* **Section [Z]:** [What this specific section says / its relevance to the query]
-(list every section found for this statute)
-
-**[Statute 2 name — from context, if present]**
-* **Section [A]:** [What this specific section says]
-* **Section [B]:** [What this specific section says]
-(list every section found for this statute)
-
-**[Continue for every statute found in the context]**
-
-###  Action Plan
-[RULE: Provide 3 concrete steps using ONLY Pakistani institutions and procedures. Allowed: FIA, NADRA, Pakistan Telecommunication Authority (PTA), Civil Courts, Session Courts, High Courts, Supreme Court, Consumer Courts, National Database, PEMRA, SECP, SBP, etc. Do NOT mention foreign agencies, apps, or generic advice like "contact your lawyer".]
-1. [Step using a specific Pakistani institution or procedure]
-2. [Step using a specific Pakistani institution or procedure]
-3. [Step using a specific Pakistani institution or procedure]
-
-###  Evidence Checklist
-[RULE: Use only the checklist below — do not add or remove items.]
-{evidence_text}
+### What You Should Do
+[Practical, real-world steps to take (e.g., FIR, lawyer, relevant Pakistani institutions like FIA, NADRA, Courts). Incorporate these evidence items:
+{evidence_text}]
 """
     return llm.invoke(prompt)
